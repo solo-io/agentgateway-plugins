@@ -1,0 +1,33 @@
+# yaml-language-server: $schema=https://agentgateway.dev/schema/config
+binds:
+- port: 3000
+  listeners:
+  - protocol: HTTP
+    routes:
+    - policies:
+        plugins:
+        - name: regorus
+          plugin: ./plugins/regorus/target/release/libagw_plugin_regorus.so
+          config:
+            resultHeader: x-rego-result
+            rule: data.agentgateway.result
+            policy: |
+              package agentgateway
+
+              default result := false
+
+              result := "admin" if {
+                input.headers["x-user"] == "admin"
+              }
+
+              result := "tenant-route" if {
+                input.path == "/tenant"
+                input.headers["x-tenant"] != null
+              }
+
+              result := sprintf("%s:%s", [input.method, input.path]) if {
+                input.path != "/tenant"
+                input.headers["x-user"] != "admin"
+              }
+      backends:
+      - host: 127.0.0.1:8080

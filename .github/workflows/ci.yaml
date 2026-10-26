@@ -1,0 +1,130 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    # Release a single plugin by pushing a tag of the form <plugin>/v<semver>,
+    # e.g. regorus/v0.1.0.
+    tags: ['*/v*']
+  workflow_dispatch:
+
+env:
+  IMAGE_PREFIX: ghcr.io/solo-io/agentgateway-plugins
+
+permissions:
+  contents: read
+
+jobs:
+  plugins:
+    runs-on: ubuntu-24.04
+    outputs:
+      plugins: ${{ steps.list.outputs.plugins }}
+      version: ${{ steps.list.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - id: list
+        # A plugin is any directory under plugins/ with a plugin.yaml manifest.
+        run: |
+          plugins="$(for f in plugins/*/plugin.yaml; do yq -o=json -I=0 ".name = \"$(basename "$(dirname "$f")")\"" "$f"; done | jq -sc .)"
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            # Tag release: only build the tagged plugin.
+            tag="${GITHUB_REF#refs/tags/}"
+            plugins="$(jq -c --arg p "${tag%%/*}" 'map(select(.name == $p))' <<< "${plugins}")"
+            if [[ "${plugins}" == "[]" ]]; then
+              echo "tag ${tag} does not match a plugin" >&2
+              exit 1
+            fi
+            echo "version=${tag#*/v}" >> "$GITHUB_OUTPUT"
+          fi
+          echo "plugins=${plugins}" >> "$GITHUB_OUTPUT"
+
+  test:
+    needs: plugins
+    strategy:
+      fail-fast: false
+      matrix:
+        plugin: ${{ fromJSON(needs.plugins.outputs.plugins) }}
+    name: test (${{ matrix.plugin.name }})
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: plugins/${{ matrix.plugin.name }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - if: matrix.plugin.language == 'rust'
+        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master (2026-10-16)
+        with:
+          toolchain: stable
+          components: clippy
+      - if: matrix.plugin.language == 'rust'
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          workspaces: plugins/${{ matrix.plugin.name }}
+      - if: matrix.plugin.language == 'rust'
+        run: |
+          cargo clippy --all-targets -- -D warnings
+          cargo test
+
+      - if: matrix.plugin.language == 'c'
+        run: make CFLAGS="-O2 -Wall -Wextra -Werror"
+
+      - if: matrix.plugin.language == 'go'
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: plugins/${{ matrix.plugin.name }}/go.mod
+          cache-dependency-path: plugins/${{ matrix.plugin.name }}/go.sum
+      - if: matrix.plugin.language == 'go'
+        run: |
+          go vet ./...
+          go test ./...
+
+  # Builds the image for every run, so PRs verify the Dockerfile too, but only
+  # pushes for main and release tags.
+  image:
+    needs: [plugins, test]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        plugin: ${{ fromJSON(needs.plugins.outputs.plugins) }}
+    name: image (${{ matrix.plugin.name }})
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - if: github.event_name == 'push'
+        uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: meta
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
+        with:
+          images: ${{ env.IMAGE_PREFIX }}/${{ matrix.plugin.name }}
+          # main pushes:              :main, :sha-<short>
+          # <plugin>/vX.Y.Z tag pushes: :X.Y.Z, :X.Y, :latest (latest only for non-prerelease)
+          tags: |
+            type=raw,value=main,enable=${{ github.ref == 'refs/heads/main' }}
+            type=sha,enable=${{ github.ref == 'refs/heads/main' }}
+            type=semver,pattern={{version}},value=${{ needs.plugins.outputs.version }},enable=${{ needs.plugins.outputs.version != '' }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ needs.plugins.outputs.version }},enable=${{ needs.plugins.outputs.version != '' }}
+          flavor: |
+            latest=${{ needs.plugins.outputs.version != '' && !contains(needs.plugins.outputs.version, '-') }}
+          labels: |
+            org.opencontainers.image.title=${{ matrix.plugin.name }}
+            org.opencontainers.image.description=agentgateway plugin: ${{ matrix.plugin.name }}
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          build-args: PLUGIN=${{ matrix.plugin.name }}
+          push: ${{ github.event_name == 'push' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.plugin.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.plugin.name }}

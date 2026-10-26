@@ -1,0 +1,4 @@
+# Plugin metadata, read by CI. The plugin name is the directory name.
+language: rust
+status: demo # demo | community | solo
+description: Shows what happens when a plugin fails. A Rust panic fails only the request; a segfault takes down the whole gateway.

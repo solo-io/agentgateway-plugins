@@ -1,0 +1,4 @@
+# Plugin metadata, read by CI. The plugin name is the directory name.
+language: rust
+status: demo # demo | community | solo
+description: Run TypeScript or JavaScript from config, with async access to the plugin host API.

@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=https://agentgateway.dev/schema/config
+binds:
+- port: 3000
+  listeners:
+  - protocol: HTTP
+    routes:
+    - policies:
+        plugins:
+        - name: quickjs
+          plugin: ./plugins/quickjs/target/release/libagw_plugin_quickjs.so
+          config:
+            timeoutMs: 1000
+            code: |
+              async function onRequest(req: GatewayRequest): Promise<RequestResult> {
+                if (req.path === "/hello") {
+                  return { status: 200, headers: { "content-type": "text/plain" }, body: "hello from typescript\n" };
+                }
+                await sleep(50);
+                const callout = await httpCall("http://127.0.0.1:8080/", { headers: { "x-from": "quickjs" } });
+                req.setHeader("x-callout-status", String(callout.status));
+                req.setHeader("x-user-agent", String(req.cel('request.headers["user-agent"]')));
+                console.log("handling", req.method, req.path);
+                return { state: { start: Date.now() } };
+              }
+
+              const onResponse: OnResponse = (res, state) => {
+                res.setHeader("x-elapsed-ms", String(Date.now() - state.start));
+              };
+      backends:
+      - host: 127.0.0.1:8080

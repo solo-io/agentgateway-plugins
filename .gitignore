@@ -1,0 +1,22 @@
+**/target
+**/*.so
+**/plugin.h
+.cursor
+.claude
+.codex
+.omc
+/target
+/build
+.vscode
+.idea
+.run
+.DS_Store
+.venv
+.bin
+.env
+.env.*
+!.env.example
+*.local
+
+# to override the default AGENTS.md
+AGENTS.override.md

@@ -1,0 +1,4 @@
+# Plugin metadata, read by CI. The plugin name is the directory name.
+language: rust
+status: demo # demo | community | solo
+description: Runs requests through an Axum router and streams the router's response back to the client.

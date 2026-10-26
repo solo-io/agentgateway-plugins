@@ -1,0 +1,4 @@
+# Plugin metadata, read by CI. The plugin name is the directory name.
+language: rust
+status: demo # demo | community | solo
+description: Evaluates inline Rego policy with Regorus and allows or denies requests.

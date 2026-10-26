@@ -1,0 +1,23 @@
+# Workspace for the Rust plugin SDK, copied from agentgateway by sync-sdk.sh.
+# The crates inherit these values, so keep them in sync with upstream.
+[workspace]
+resolver = "3"
+members = ["abi", "sdk"]
+
+[workspace.package]
+version = "0.0.0"
+edition = "2024"
+license = "Apache-2.0"
+publish = false
+
+[workspace.dependencies]
+agentgateway-abi = { path = "abi" }
+anyhow = "1.0"
+async-trait = "0.1"
+bytes = { version = "1.11", features = ["serde"] }
+embed-doc-image = "0.1.4"
+http = "1.4"
+http-body = "1"
+http-body-util = "0.1.3"
+serde = { version = "1.0", features = ["derive", "rc"] }
+serde_json = { version = "1.0", features = ["preserve_order", "raw_value"] }

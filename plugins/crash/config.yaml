@@ -1,0 +1,13 @@
+# yaml-language-server: $schema=https://agentgateway.dev/schema/config
+binds:
+- port: 3000
+  listeners:
+  - protocol: HTTP
+    routes:
+    - policies:
+        plugins:
+        - name: crash
+          plugin: ./plugins/crash/target/release/libagw_plugin_crash.so
+          config: {}
+      backends:
+      - host: 127.0.0.1:8080

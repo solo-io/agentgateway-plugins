@@ -1,0 +1,28 @@
+[package]
+name = "agentgateway-sdk"
+version = { workspace = true }
+license = { workspace = true }
+edition = { workspace = true }
+publish = { workspace = true }
+
+[lib]
+path = "src/lib.rs"
+
+[features]
+doc-images = ["dep:embed-doc-image"]
+testing = []
+
+[package.metadata.docs.rs]
+features = ["doc-images"]
+
+[dependencies]
+agentgateway-abi.workspace = true
+anyhow.workspace = true
+async-trait.workspace = true
+bytes.workspace = true
+embed-doc-image = { workspace = true, optional = true }
+http.workspace = true
+http-body.workspace = true
+http-body-util.workspace = true
+serde.workspace = true
+serde_json.workspace = true
