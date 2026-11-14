@@ -64,6 +64,18 @@ agentgateway oneshot -f plugins/my-plugin/config.yaml -- curl -si localhost:3000
 > agentgateway may write a generated session key into the config file it was
 > started with. Don't commit it.
 
+To check behavior automatically, add `plugins/my-plugin/e2e.sh` with curl
+assertions (see [`plugins/regorus/e2e.sh`](./plugins/regorus/e2e.sh) and the
+helpers in [`scripts/e2e-lib.sh`](./scripts/e2e-lib.sh)), then run:
+
+```sh
+ENTERPRISE_AGENTGATEWAY_LICENSE_KEY=... make e2e PLUGIN=my-plugin AGW_BIN=/path/to/agentgateway
+```
+
+This builds the plugin, starts an echo backend and the gateway with the
+plugin's `config.yaml` (fixing the library suffix and busy ports for the local
+machine), runs `e2e.sh`, and stops everything.
+
 The local config references the library by path:
 
 ```yaml

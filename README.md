@@ -117,6 +117,7 @@ make test                        # test every plugin
 make lint                        # clippy every plugin
 make build                       # build every plugin
 make docker PLUGIN=regorus       # build an image, tagged regorus:dev
+make e2e PLUGIN=regorus          # run it in a real enterprise gateway (AGW_BIN, license key)
 
 # try a plugin with its sample config
 agentgateway oneshot -f plugins/regorus/config.yaml -- curl -s -H 'x-user: admin' localhost:3000/
