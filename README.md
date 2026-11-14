@@ -82,7 +82,7 @@ spec:
   traffic:
     entPlugin:
       name: regorus      # matches spec.plugins[].name above
-      order: PostAuthz   # Early | PostAuth | PostAuthz | Late (default)
+      order: PostAuthorization   # Early | PostAuthentication | PostAuthorization | Late (default)
       config:            # passed to the plugin as JSON
         resultHeader: x-rego-result
         policy: |

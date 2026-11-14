@@ -30,9 +30,11 @@ cp -r plugins/sdk-tour plugins/my-plugin
 cd plugins/my-plugin
 rm -rf target Cargo.lock
 
-sed -i 's/agw-plugin-sdk-tour/agw-plugin-my-plugin/' Cargo.toml
-sed -i 's/export_plugin_with_factory!(SdkTour, "sdk-tour")/export_plugin_with_factory!(SdkTour, "my-plugin")/' src/lib.rs
-sed -i 's#sdk-tour#my-plugin#g; s#libagw_plugin_sdk_tour#libagw_plugin_my_plugin#' config.yaml
+# -i.bak works with both GNU and BSD (macOS) sed.
+sed -i.bak 's/agw-plugin-sdk-tour/agw-plugin-my-plugin/' Cargo.toml
+sed -i.bak 's/name = "sdk-tour"/name = "my-plugin"/' src/lib.rs
+sed -i.bak 's#sdk-tour#my-plugin#g; s#libagw_plugin_sdk_tour#libagw_plugin_my_plugin#' config.yaml
+rm Cargo.toml.bak src/lib.rs.bak config.yaml.bak
 ```
 
 Then edit:
@@ -162,7 +164,7 @@ spec:
   traffic:
     entPlugin:
       name: my-plugin          # matches spec.plugins[].name in the parameters
-      order: Late              # Early | PostAuth | PostAuthz | Late
+      order: Late              # Early | PostAuthentication | PostAuthorization | Late
       config:                  # passed to the plugin factory as JSON
         calloutUrl: http://my-service.default.svc.cluster.local/
 ```
