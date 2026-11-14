@@ -30,9 +30,11 @@ cp -r plugins/sdk-tour plugins/my-plugin
 cd plugins/my-plugin
 rm -rf target Cargo.lock
 
-sed -i 's/agw-plugin-sdk-tour/agw-plugin-my-plugin/' Cargo.toml
-sed -i 's/export_plugin_with_factory!(SdkTour, "sdk-tour")/export_plugin_with_factory!(SdkTour, "my-plugin")/' src/lib.rs
-sed -i 's#sdk-tour#my-plugin#g; s#libagw_plugin_sdk_tour#libagw_plugin_my_plugin#' config.yaml
+# -i.bak works with both GNU and BSD (macOS) sed.
+sed -i.bak 's/agw-plugin-sdk-tour/agw-plugin-my-plugin/' Cargo.toml
+sed -i.bak 's/name = "sdk-tour"/name = "my-plugin"/' src/lib.rs
+sed -i.bak 's#sdk-tour#my-plugin#g; s#libagw_plugin_sdk_tour#libagw_plugin_my_plugin#' config.yaml
+rm Cargo.toml.bak src/lib.rs.bak config.yaml.bak
 ```
 
 Then edit:
@@ -67,11 +69,12 @@ agentgateway oneshot -f plugins/my-plugin/config.yaml -- curl -si localhost:3000
 The local config references the library by path:
 
 ```yaml
-plugins:
-- name: my-plugin
-  plugin: ./plugins/my-plugin/target/release/libagw_plugin_my_plugin.so
-  config:
-    calloutUrl: http://127.0.0.1:8080/
+    - policies:
+        plugins:
+        - name: my-plugin
+          plugin: ./plugins/my-plugin/target/release/libagw_plugin_my_plugin.so
+          config:
+            calloutUrl: http://127.0.0.1:8080/
 ```
 
 ## 3. Build and push an image
@@ -162,7 +165,7 @@ spec:
   traffic:
     entPlugin:
       name: my-plugin          # matches spec.plugins[].name in the parameters
-      order: Late              # Early | PostAuth | PostAuthz | Late
+      order: Late              # Early | PostAuthentication | PostAuthorization | Late
       config:                  # passed to the plugin factory as JSON
         calloutUrl: http://my-service.default.svc.cluster.local/
 ```
@@ -180,12 +183,12 @@ name from the parameters:
 
 ## 6. Verify
 
-Check that the library is mounted and found:
+Check that the library is mounted and loaded. The gateway image has no shell or
+`ls`, so use the logs:
 
 ```sh
 kubectl get deploy my-gateway -o yaml | grep -A1 AGW_PLUGIN_PATH
-kubectl exec deploy/my-gateway -- ls /var/lib/agentgateway/plugins/my-plugin
-kubectl logs deploy/my-gateway | grep -i plugin
+kubectl logs deploy/my-gateway | grep -i plugin   # expect: loaded plugin name=my-plugin ...
 ```
 
 Then send a request through the gateway:
@@ -217,4 +220,5 @@ kubectl get enterpriseagentgatewaypolicy my-plugin -o yaml
 | `failed to initialize: missing field ...` | `entPlugin.config` doesn't match what the plugin's factory expects. |
 | Library not found | `entPlugin.name` (or `plugin`) doesn't match a `spec.plugins[].name`, or the image doesn't contain exactly one `.so`. |
 | Pod stuck in `ContainerCreating` | Image volumes aren't supported by the cluster, or the image can't be pulled. Check `kubectl describe pod`. |
+| Requests fail; log shows `failed to load plugin; requests it applies to will fail` | In Kubernetes a plugin that fails to load doesn't crash the pod; the error that follows says why (missing library, config error, ABI mismatch). Standalone gateways refuse to start instead. |
 | Undefined symbol or ABI errors | The plugin was built against a different SDK version than the gateway. Rebuild it against the SDK that matches your gateway release. |

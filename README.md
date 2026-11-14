@@ -82,7 +82,7 @@ spec:
   traffic:
     entPlugin:
       name: regorus      # matches spec.plugins[].name above
-      order: PostAuthz   # Early | PostAuth | PostAuthz | Late (default)
+      order: PostAuthorization   # Early | PostAuthentication | PostAuthorization | Late (default)
       config:            # passed to the plugin as JSON
         resultHeader: x-rego-result
         policy: |
@@ -97,15 +97,28 @@ The gateway uses the parameters through its `spec.infrastructure.parametersRef`.
 
 ### Standalone
 
+Plugins are policies, so they go under a route's (or gateway's) `policies`.
 Set `plugin` to the library file, or put each plugin in its own directory under
-`AGW_PLUGIN_PATH` and refer to it by directory name:
+`AGW_PLUGIN_PATH` and refer to it by name:
 
 ```yaml
-plugins:
-- name: regorus
-  plugin: ./libagw_plugin_regorus.so   # optional: defaults to `name`, looked up in
-  config: {}                           # AGW_PLUGIN_PATH (e.g. /plugins/regorus/)
+binds:
+- port: 3000
+  listeners:
+  - protocol: HTTP
+    routes:
+    - policies:
+        plugins:
+        - name: regorus           # loads AGW_PLUGIN_PATH/regorus/<one .so>
+          order: postAuthorization # early | postAuthentication | postAuthorization | late (default)
+          config: {}
+      backends:
+      - host: 127.0.0.1:8080
 ```
+
+Standalone `order` values are camelCase; the Kubernetes CRD uses the PascalCase
+names shown above. Standalone enterprise agentgateway needs a license in
+`ENTERPRISE_AGENTGATEWAY_LICENSE_KEY`.
 
 ## Development
 
