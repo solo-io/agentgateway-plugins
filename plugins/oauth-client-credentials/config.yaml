@@ -1,0 +1,16 @@
+binds:
+- port: 3000
+  listeners:
+  - protocol: HTTP
+    routes:
+    - policies:
+        plugins:
+        - name: oauth-client-credentials
+          plugin: ./target/release/libagw_plugin_oauth_client_credentials.so
+          order: late
+          config:
+            tokenUrl: ${OAUTH_TOKEN_URL}
+            clientIdEnv: OAUTH_CLIENT_ID
+            clientSecretEnv: OAUTH_CLIENT_SECRET
+      backends:
+      - host: 127.0.0.1:8080
