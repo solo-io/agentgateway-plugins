@@ -7,7 +7,7 @@
 # The builder runs natively and cross-compiles for the target platform, so
 # multi-arch builds don't need emulation. Building on bookworm keeps the glibc
 # requirement low enough for the agentgateway runtime image.
-FROM --platform=$BUILDPLATFORM docker.io/library/rust:1.99.0-bookworm AS builder
+FROM --platform=$BUILDPLATFORM docker.io/library/rust:1.99.1-bookworm AS builder
 ARG TARGETARCH
 RUN case "${TARGETARCH}" in \
       amd64) arch=x86_64; gcc=gcc-x86-64-linux-gnu ;; \
