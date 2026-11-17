@@ -1,0 +1,50 @@
+# yaml-language-server: $schema=https://agentgateway.dev/schema/config
+binds:
+- port: 3000
+  listeners:
+  - protocol: HTTP
+    routes:
+    - policies:
+        plugins:
+        - name: cedar
+          plugin: ./target/release/libagw_plugin_cedar.so
+          config:
+            decisionHeader: x-cedar-decision
+            exposeReasons: true
+            principal:
+              # Local testing only: any client can set this header. Use
+              # { property: jwt.sub } behind JWT authentication.
+              id: { header: x-user }
+            # action = Action::"<method>", resource = Route::"<path>" (defaults)
+            context:
+              headers: [x-tenant]
+            # Group membership comes from static entities, never from the client.
+            entities:
+            - uid: { type: User, id: alice }
+              attrs: {}
+              parents: [{ type: Group, id: admins }]
+            - uid: { type: User, id: dan }
+              attrs: {}
+              parents: [{ type: Group, id: admins }, { type: Group, id: contractors }]
+            - uid: { type: Group, id: admins }
+              attrs: {}
+              parents: []
+            - uid: { type: Group, id: contractors }
+              attrs: {}
+              parents: []
+            policies: |
+              @id("admins-can-do-anything")
+              permit (principal in Group::"admins", action, resource);
+
+              @id("anyone-can-read-public")
+              permit (principal, action == Action::"GET", resource)
+              when { context.path like "/public/*" };
+
+              @id("acme-tenant-read")
+              permit (principal, action == Action::"GET", resource == Route::"/tenant")
+              when { context.headers has "x-tenant" && context.headers["x-tenant"] == "acme" };
+
+              @id("no-deletes-for-contractors")
+              forbid (principal in Group::"contractors", action == Action::"DELETE", resource);
+      backends:
+      - host: 127.0.0.1:8080

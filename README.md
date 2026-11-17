@@ -30,6 +30,7 @@ Ways to write a plugin:
 | [sdk-tour](./plugins/sdk-tour/) | Tour of the SDK. Start here. | Demo |
 | [quickjs](./plugins/quickjs/) | Run TypeScript or JavaScript from config, with async access to the host API. | Demo |
 | [regorus](./plugins/regorus/) | Allow or deny requests with inline [Rego](https://github.com/microsoft/regorus) policy. | Demo |
+| [cedar](./plugins/cedar/) | Allow or deny requests with inline [Cedar](https://www.cedarpolicy.com/) policies, schema validation and entity hierarchies. | Demo |
 | [axum](./plugins/axum/) | Serve requests from an [Axum](https://github.com/tokio-rs/axum) router. | Demo |
 | [hello-c](./plugins/hello-c/) | Minimal C plugin, written against the raw ABI. Adds a request header. | Demo |
 | [crash](./plugins/crash/) | What happens when a plugin fails: a panic fails one request, a segfault kills the gateway. | Demo |
